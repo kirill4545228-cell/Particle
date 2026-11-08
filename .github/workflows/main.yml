@@ -1,0 +1,40 @@
+name: Build plugin
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Unzip project (if a zip is in the repo)
+        run: |
+          ZIP=$(ls *.zip 2>/dev/null | head -n1 || true)
+          if [ -n "$ZIP" ]; then
+            mkdir -p _proj
+            unzip -q -o "$ZIP" -d _proj
+            PROJ=$(dirname "$(find _proj -name pom.xml | head -n1)")
+          else
+            PROJ=.
+          fi
+          echo "PROJ=$PROJ" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          cd "$PROJ"
+          mvn -B package
+          cp target/ParticleShowcase.jar "$GITHUB_WORKSPACE/ParticleShowcase.jar"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ParticleShowcase
+          path: ParticleShowcase.jar
